@@ -133,7 +133,7 @@
             firebase.auth().signInWithPopup(provider).then(() => {
                 const user = firebase.auth().currentUser;
                 document.getElementById('authLink').innerText = user.displayName;
-            }).catch(() => alert("Use http://localhost:5000 in your browser address bar!"));
+            }).catch((err) => console.error("Auth Error:", err));
         }
 
         async function generateReport() {
@@ -164,3 +164,4 @@
 </body>
 
 </html>
+
