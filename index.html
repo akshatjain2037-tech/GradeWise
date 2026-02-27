@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GradeWise | Elite Dual-Page</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root { --neon: #d4ff00; --bg: #000; --text: #fff; --panel: #0a0a0a; --border: #222; }
+        body.light-theme { --bg: #fff; --text: #000; --panel: #f5f5f5; --border: #ddd; }
+        
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; transition: 0.5s; }
+
+        /* The Sleek Stationary "G" Branding */
+        .bg-brand {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 85vh; font-weight: 900; color: transparent;
+            -webkit-text-stroke: 1px var(--border); z-index: -1; user-select: none;
+        }
+        /* Specific Outline-Glow Effect */
+        .bg-brand::after {
+            content: "G"; position: absolute; top: 0; left: 0;
+            -webkit-text-stroke: 1px var(--neon);
+            mask-image: radial-gradient(circle 250px at var(--x) var(--y), black 100%, transparent 0%);
+            -webkit-mask-image: radial-gradient(circle 250px at var(--x) var(--y), black 100%, transparent 0%);
+            opacity: 0.6; pointer-events: none;
+        }
+
+        header {
+            position: fixed; top: 0; width: 100%; padding: 30px 50px; box-sizing: border-box;
+            display: flex; justify-content: space-between; align-items: center; z-index: 100;
+        }
+        .nav-right { display: flex; gap: 30px; align-items: center; font-size: 14px; font-weight: 500; }
+        .nav-right span { cursor: pointer; transition: 0.3s; }
+        .nav-right span:hover { color: var(--neon); }
+        .theme-toggle { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--neon); background: var(--text); cursor: pointer; }
+
+        /* Perfect Center Alignment for Page 1 */
+        #page-input { 
+            height: 100vh; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; text-align: center;
+        }
+        .main-container { width: 100%; max-width: 750px; }
+        .dual-box { 
+            background: var(--panel); border: 1px solid var(--border); 
+            border-radius: 24px; padding: 10px; margin-top: 40px; transition: 0.3s; 
+        }
+        .dual-box:hover { border-color: var(--neon); box-shadow: 0 0 30px rgba(212, 255, 0, 0.1); }
+        
+        textarea { 
+            width: 100%; background: transparent; border: none; color: var(--text); 
+            padding: 20px; font-size: 18px; outline: none; resize: none; box-sizing: border-box;
+        }
+
+        .btn-grade { 
+            background: var(--neon); color: black; border: none; width: 55px; height: 55px; 
+            border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; 
+            margin-top: 30px; transition: 0.3s;
+        }
+        .btn-grade:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--neon); }
+
+        /* Page 2: Professional Report */
+        #page-report { min-height: 100vh; display: none; padding: 140px 40px; justify-content: center; overflow-y: auto; }
+        .report-card { background: var(--panel); border: 1px solid var(--border); border-radius: 30px; padding: 60px; width: 100%; max-width: 900px; position: relative; }
+        .score-huge { font-size: 120px; font-weight: 900; color: var(--neon); margin: 0; line-height: 1; }
+        .pdf-btn { position: absolute; top: 40px; right: 40px; background: transparent; color: var(--text); border: 1px solid var(--border); padding: 12px 25px; border-radius: 100px; cursor: pointer; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="bg-brand" id="bgLetter">G</div>
+
+    <header>
+        <div style="font-weight: 900; font-size: 26px; letter-spacing: -2px;">gradewise</div>
+        <div class="nav-right">
+            <span onclick="toggleTheme()">theme <div class="theme-toggle" style="display:inline-block; vertical-align:middle; margin-left:5px;"></div></span>
+            <span id="authLink" onclick="doAuth()">sign in</span>
+        </div>
+    </header>
+
+    <div id="page-input">
+        <div class="main-container">
+            <h1 style="font-size: 56px; margin: 0; font-weight: 800; letter-spacing: -2px;">Grade <span>to create.</span></h1>
+            <div class="dual-box">
+                <textarea id="ques" placeholder="" style="height: 100px;"></textarea>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0 20px;">
+                <textarea id="ans" placeholder="Your Answer..." style="height: 160px;"></textarea>
+            </div>
+            <button class="btn-grade" onclick="generateReport()">↑</button>
+        </div>
+    </div>
+
+    <div id="page-report">
+        <div class="report-card" id="pdf-area">
+            <button class="pdf-btn" onclick="downloadPDF()">Export PDF</button>
+            <p style="color: var(--neon); font-weight: bold; letter-spacing: 3px; font-size: 12px;">ACADEMIC INSIGHT</p>
+            <h1 id="scoreDisplay" class="score-huge">0/10</h1>
+            <div id="reportContent" style="line-height: 1.8; font-size: 19px; margin-top: 30px; color: var(--text);"></div>
+        </div>
+    </div>
+
+    <script>
+        // Use your working credentials
+        const firebaseConfig = { apiKey: "AIzaSy...", authDomain: "gradewise-8ca5d.firebaseapp.com", projectId: "gradewise-8ca5d" };
+        firebase.initializeApp(firebaseConfig);
+
+        // Auto-Typing Placeholder Logic
+        const phrases = ["Grade a Physics answer...", "Solve a Chemistry numerical...", "Analyze a history essay...", "What is 10 + 10?"];
+        let pIdx = 0, charIdx = 0, isDeleting = false;
+        function type() {
+            const box = document.getElementById('ques');
+            let current = phrases[pIdx];
+            box.placeholder = isDeleting ? current.substring(0, charIdx--) : current.substring(0, charIdx++);
+            if (!isDeleting && charIdx === current.length + 1) { isDeleting = true; setTimeout(type, 2000); }
+            else if (isDeleting && charIdx === 0) { isDeleting = false; pIdx = (pIdx + 1) % phrases.length; setTimeout(type, 500); }
+            else { setTimeout(type, isDeleting ? 40 : 80); }
+        }
+        type();
+
+        // Mouse Spotlight for "G" Lines
+        window.addEventListener('mousemove', e => {
+            document.documentElement.style.setProperty('--x', e.clientX + 'px');
+            document.documentElement.style.setProperty('--y', e.clientY + 'px');
+        });
+
+        function toggleTheme() { document.body.classList.toggle('light-theme'); }
+
+        // Firebase Sign-In Functionality
+        function doAuth() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider).then(() => {
+                const user = firebase.auth().currentUser;
+                document.getElementById('authLink').innerText = user.displayName;
+            }).catch(() => alert("Use http://localhost:5000 in your browser address bar!"));
+        }
+
+        async function generateReport() {
+            const q = document.getElementById('ques').value;
+            const a = document.getElementById('ans').value;
+            if(!a) return alert("Enter an answer!");
+            document.getElementById('page-input').style.display = 'none';
+            document.getElementById('page-report').style.display = 'flex';
+            document.getElementById('reportContent').innerHTML = "<i>Analyzing with local Llama-3.2:1b...</i>";
+            
+            try {
+                const res = await fetch('/grade', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: q, answer: a})
+                });
+                const json = await res.json();
+                document.getElementById('scoreDisplay').innerText = json.score + "/10";
+                document.getElementById('reportContent').innerHTML = json.report;
+            } catch (e) { document.getElementById('reportContent').innerHTML = "Connection Error."; }
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdf-area');
+            html2pdf().from(element).save('GradeWise_Report.pdf');
+        }
+    </script>
+</body>
+</html>
