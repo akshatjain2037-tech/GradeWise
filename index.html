@@ -145,7 +145,7 @@
             document.getElementById('reportContent').innerHTML = "<i>Analyzing with local Llama-3.2:1b...</i>";
             
             try {
-                const res = await fetch(' https://dfe9-2401-4900-88f1-dad6-40c8-f0bb-ff3e-5ec9.ngrok-free.app', {
+                const res = await fetch(' https://dfe9-2401-4900-88f1-dad6-40c8-f0bb-ff3e-5ec9.ngrok-free.app/grade', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({question: q, answer: a})
@@ -164,4 +164,5 @@
 </body>
 
 </html>
+
 
